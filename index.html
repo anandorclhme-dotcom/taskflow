@@ -1,6 +1,140 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AnandTaskManagent</title><link rel="stylesheet" href="styles.css"></head><body>
-<div id="auth"><div class="box"><h1>AnandTaskManagent</h1><p>Tasks • Projects • Time</p><input id="email" type="email" placeholder="Email"><input id="password" type="password" placeholder="Password"><input id="name" placeholder="Full name (for new account)"><div class="row"><button type="button" id="login">Login</button><button type="button" id="signup" class="secondary">Create account</button></div><p id="msg"></p></div></div>
-<div id="app" class="hidden"><header><b>AnandTaskManagent</b><div><span id="who"></span> <button type="button" id="logout" class="secondary">Logout</button></div></header><main><div class="stats"><div>Today<b id="today">0</b></div><div>Overdue<b id="overdue">0</b></div><div>Completed<b id="completed">0</b></div><div>Tracked<b id="tracked">0m</b></div></div><div class="grid"><section class="panel"><div class="head"><h2>Projects</h2><button type="button" id="newProject">+ Project</button></div><div id="projects"></div></section><section class="panel"><div class="head"><h2>Tasks</h2><div><select id="filter"><option value="all">All</option><option value="open">Open</option><option value="today">Today</option><option value="done">Completed</option></select><button type="button" id="newTask">+ Task</button></div></div><div id="tasks"></div></section></div><section class="panel timer"><div><h2>Time Tracker</h2><p id="timerTask">Choose Track on a task.</p></div><strong id="clock">00:00:00</strong></section></main></div>
-<dialog id="projectDlg"><form method="dialog"><h2>New Project</h2><input id="projectName" required placeholder="Project name"><div class="row"><button value="cancel" class="secondary">Cancel</button><button id="saveProject">Create</button></div></form></dialog>
-<dialog id="taskDlg"><form method="dialog"><h2>New Task</h2><input id="taskName" required placeholder="Task name"><select id="taskProject"></select><input id="taskDue" type="datetime-local"><select id="taskPriority"><option>low</option><option selected>medium</option><option>high</option><option>urgent</option></select><input id="taskEstimate" type="number" min="0" value="30"><div class="row"><button value="cancel" class="secondary">Cancel</button><button id="saveTask">Save</button></div></form></dialog>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>AnandTaskManagent</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#111827;color:#fff;padding:16px 5%;display:flex;justify-content:space-between;align-items:center}
+button,input,select{font:inherit}button{background:#111827;color:#fff;border:0;border-radius:9px;padding:11px 15px;cursor:pointer}button:disabled{opacity:.55;cursor:not-allowed}.secondary{background:#e5e7eb;color:#111827}
+#auth{min-height:100vh;display:grid;place-items:center;padding:20px}.box{background:#fff;padding:28px;border-radius:16px;width:min(440px,94vw);box-shadow:0 10px 30px #0001}.box h1{margin-top:0}.box input,.box select{display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #d1d5db;border-radius:9px;background:#fff}.row{display:flex;gap:8px}.row>*{flex:1}.msg{min-height:24px;margin:12px 0 0}.hidden{display:none!important}
+main{padding:0 14px 35px}.stats,.grid,.panel,.timer{max-width:1200px;margin:20px auto}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.stats>div,.panel{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 12px #0001}.stats b{display:block;font-size:28px;margin-top:4px}.grid{display:grid;grid-template-columns:320px 1fr;gap:14px}.head{display:flex;justify-content:space-between;align-items:center;gap:8px}.head h2{margin:0}.project,.task{border:1px solid #e5e7eb;border-radius:10px;padding:12px;margin:8px 0}.project.active{outline:2px solid #111827}.task{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center}.done .name{text-decoration:line-through;color:#9ca3af}.meta{font-size:12px;color:#6b7280;margin-top:3px}.timer{display:flex;justify-content:space-between;align-items:center}.timer strong{font-size:30px}.danger{color:#b91c1c}
+dialog{border:0;border-radius:14px;padding:22px;width:min(440px,94vw);box-shadow:0 20px 50px #0003}dialog::backdrop{background:#0006}dialog input,dialog select{display:block;width:100%;padding:11px;margin:7px 0;border:1px solid #d1d5db;border-radius:9px}
+@media(max-width:750px){.stats{grid-template-columns:repeat(2,1fr)}.grid{grid-template-columns:1fr}.timer{display:block}.head{align-items:flex-start;flex-direction:column}}
+</style>
+</head>
+<body>
+<section id="auth">
+<div class="box">
+<h1>AnandTaskManagent</h1><p>Tasks • Projects • Time</p>
+<input id="email" type="email" autocomplete="email" placeholder="Email">
+<input id="password" type="password" autocomplete="current-password" placeholder="Password">
+<input id="fullname" type="text" autocomplete="name" placeholder="Full name (new account only)">
+<div class="row">
+<button type="button" id="loginBtn">Login</button>
+<button type="button" id="signupBtn" class="secondary">Create account</button>
+</div>
+<div id="authMsg" class="msg"></div>
+</div>
+</section>
+
+<section id="app" class="hidden">
+<header><b>AnandTaskManagent</b><div><span id="who"></span> <button type="button" id="logoutBtn" class="secondary">Logout</button></div></header>
+<main>
+<div class="stats">
+<div>Today<b id="today">0</b></div><div>Overdue<b id="overdue">0</b></div><div>Completed<b id="completed">0</b></div><div>Tracked<b id="tracked">0m</b></div>
+</div>
+<div class="grid">
+<section class="panel"><div class="head"><h2>Projects</h2><button type="button" id="newProjectBtn">+ Project</button></div><div id="projects"></div></section>
+<section class="panel"><div class="head"><h2>Tasks</h2><div><select id="filter"><option value="all">All</option><option value="open">Open</option><option value="today">Today</option><option value="done">Completed</option></select> <button type="button" id="newTaskBtn">+ Task</button></div></div><div id="tasks"></div></section>
+</div>
+<section class="panel timer"><div><h2>Time Tracker</h2><p id="timerTask">Choose Track on a task.</p></div><strong id="clock">00:00:00</strong></section>
+</main>
+</section>
+
+<dialog id="projectDlg"><form method="dialog"><h2>New Project</h2><input id="projectName" required placeholder="Project name"><div class="row"><button value="cancel" class="secondary">Cancel</button><button id="saveProjectBtn">Create</button></div></form></dialog>
+<dialog id="taskDlg"><form method="dialog"><h2>New Task</h2><input id="taskName" required placeholder="Task name"><select id="taskProject"></select><input id="taskDue" type="datetime-local"><select id="taskPriority"><option>low</option><option selected>medium</option><option>high</option><option>urgent</option></select><input id="taskEstimate" type="number" min="0" value="30"><div class="row"><button value="cancel" class="secondary">Cancel</button><button id="saveTaskBtn">Save</button></div></form></dialog>
+
+<script>
+(function(){
+const BASE='https://aerytmekaqqheyjjnwwd.supabase.co';
+const KEY='sb_publishable_JL1U2PYC7uftN_hbMHYsDw_tiMxHz3M';
+let token=localStorage.getItem('atm_access_token')||'';
+let user=JSON.parse(localStorage.getItem('atm_user')||'null');
+let projects=[],tasks=[],activeProject=null,timer=null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const say=(text,ok=false)=>{$('authMsg').textContent=text;$('authMsg').style.color=ok?'#166534':'#b91c1c'};
+const today=()=>new Date().toISOString().slice(0,10);
+const mins=n=>{n=Math.floor(n||0);return n<60?n+'m':Math.floor(n/60)+'h '+n%60+'m'};
+const headers=extra=>Object.assign({'apikey':KEY,'Content-Type':'application/json'},extra||{});
+async function request(path,opts={}){
+ const h=headers(opts.headers||{});
+ if(token) h.Authorization='Bearer '+token;
+ const r=await fetch(BASE+path,Object.assign({},opts,{headers:h}));
+ const text=await r.text(); let data={}; try{data=text?JSON.parse(text):{}}catch{data={message:text}};
+ if(!r.ok){throw new Error(data.msg||data.message||data.error_description||'Request failed ('+r.status+')')}
+ return data;
+}
+function setSession(data){
+ token=data.access_token||'';
+ user=data.user||null;
+ if(token)localStorage.setItem('atm_access_token',token);else localStorage.removeItem('atm_access_token');
+ if(user)localStorage.setItem('atm_user',JSON.stringify(user));else localStorage.removeItem('atm_user');
+}
+async function signup(){
+ const email=$('email').value.trim(),password=$('password').value,name=$('fullname').value.trim();
+ if(!email||!password)return say('Enter your email and password.');
+ if(password.length<6)return say('Password must be at least 6 characters.');
+ $('signupBtn').disabled=true;say('Creating account...',true);
+ try{
+  const data=await request('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password,data:{full_name:name}})});
+  if(data.access_token){setSession(data);await showApp()}
+  else say('Account created successfully. Please check your email, confirm the account, then use Login.',true);
+ }catch(e){console.error(e);say(e.message)}
+ finally{$('signupBtn').disabled=false}
+}
+async function login(){
+ const email=$('email').value.trim(),password=$('password').value;
+ if(!email||!password)return say('Enter your email and password.');
+ $('loginBtn').disabled=true;say('Signing in...',true);
+ try{
+  const data=await request('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password})});
+  setSession(data);await showApp();
+ }catch(e){console.error(e);say(e.message)}
+ finally{$('loginBtn').disabled=false}
+}
+async function showApp(){
+ $('auth').classList.add('hidden');$('app').classList.remove('hidden');$('who').textContent=user?.email||'';await load();
+}
+async function load(){
+ try{
+  projects=await request('/rest/v1/projects?select=*&order=created_at.asc');
+  tasks=await request('/rest/v1/tasks?select=*&order=due_at.asc.nullslast');
+  render();
+ }catch(e){
+  console.error(e);
+  if(/401|403|JWT|token/i.test(e.message)){localStorage.clear();location.reload();return}
+  alert(e.message);
+ }
+}
+function render(){
+ const d=today(),now=new Date(),f=$('filter').value;
+ $('today').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at?.slice(0,10)===d).length;
+ $('overdue').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at&&new Date(t.due_at)<now).length;
+ $('completed').textContent=tasks.filter(t=>t.status==='done').length;
+ $('tracked').textContent=mins(tasks.reduce((x,t)=>x+(t.actual_minutes||0),0));
+ $('projects').innerHTML=projects.map(p=>'<div class="project '+(activeProject===p.id?'active':'')+'" data-project="'+p.id+'"><b>'+esc(p.name)+'</b><div class="meta">'+tasks.filter(t=>t.project_id===p.id&&t.status==='done').length+'/'+tasks.filter(t=>t.project_id===p.id).length+' completed</div></div>').join('')||'<p>No projects</p>';
+ document.querySelectorAll('[data-project]').forEach(x=>x.onclick=()=>{activeProject=activeProject===x.dataset.project?null:x.dataset.project;render()});
+ let a=tasks.filter(t=>!activeProject||t.project_id===activeProject);
+ if(f==='open')a=a.filter(t=>t.status!=='done');if(f==='done')a=a.filter(t=>t.status==='done');if(f==='today')a=a.filter(t=>t.due_at?.slice(0,10)===d);
+ $('tasks').innerHTML=a.map(t=>'<div class="task '+(t.status==='done'?'done':'')+'"><input type="checkbox" '+(t.status==='done'?'checked':'')+' data-check="'+t.id+'"><div><div class="name">'+esc(t.title)+'</div><div class="meta">'+esc(projects.find(p=>p.id===t.project_id)?.name||'No project')+' · '+(t.due_at?new Date(t.due_at).toLocaleString():'No due date')+' · '+mins(t.actual_minutes)+'</div></div><button type="button" class="secondary" data-track="'+t.id+'">'+(timer?.taskId===t.id?'Stop':'Track')+'</button></div>').join('')||'<p>No tasks</p>';
+ document.querySelectorAll('[data-check]').forEach(x=>x.onchange=async()=>{try{await request('/rest/v1/tasks?id=eq.'+encodeURIComponent(x.dataset.check),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({status:x.checked?'done':'todo',updated_at:new Date().toISOString()})});await load()}catch(e){alert(e.message)}});
+ document.querySelectorAll('[data-track]').forEach(x=>x.onclick=()=>timer?.taskId===x.dataset.track?stopTimer():startTimer(x.dataset.track));
+}
+$('loginBtn').onclick=login;$('signupBtn').onclick=signup;$('filter').onchange=render;
+$('logoutBtn').onclick=async()=>{try{if(token)await request('/auth/v1/logout',{method:'POST'})}catch(e){}localStorage.removeItem('atm_access_token');localStorage.removeItem('atm_user');location.reload()};
+$('newProjectBtn').onclick=()=>$('projectDlg').showModal();
+$('saveProjectBtn').onclick=async e=>{e.preventDefault();const n=$('projectName').value.trim();if(!n)return;try{await request('/rest/v1/projects',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({user_id:user.id,name:n})});$('projectDlg').close();$('projectName').value='';load()}catch(e){alert(e.message)}};
+$('newTaskBtn').onclick=()=>{$('taskProject').innerHTML=projects.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');if(activeProject)$('taskProject').value=activeProject;$('taskDlg').showModal()};
+$('saveTaskBtn').onclick=async e=>{e.preventDefault();const n=$('taskName').value.trim();if(!n)return;try{await request('/rest/v1/tasks',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify({user_id:user.id,title:n,project_id:$('taskProject').value||null,due_at:$('taskDue').value?new Date($('taskDue').value).toISOString():null,priority:$('taskPriority').value,estimated_minutes:+$('taskEstimate').value})});$('taskDlg').close();$('taskName').value='';load()}catch(e){alert(e.message)}};
+async function startTimer(id){try{const data=await request('/rest/v1/time_entries',{method:'POST',headers:{Prefer:'return=representation'},body:JSON.stringify({user_id:user.id,task_id:id,started_at:new Date().toISOString()})});timer={taskId:id,entry:Array.isArray(data)?data[0]:data,start:Date.now()};render();tick()}catch(e){alert(e.message)}}
+async function stopTimer(){if(!timer)return;const sec=Math.floor((Date.now()-timer.start)/1000),id=timer.taskId;try{await request('/rest/v1/time_entries?id=eq.'+encodeURIComponent(timer.entry.id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({ended_at:new Date().toISOString(),duration_seconds:sec})});const t=tasks.find(x=>x.id===id);await request('/rest/v1/tasks?id=eq.'+encodeURIComponent(id),{method:'PATCH',headers:{Prefer:'return=minimal'},body:JSON.stringify({actual_minutes:Math.round((t?.actual_minutes||0)+sec/60),updated_at:new Date().toISOString()})});timer=null;await load()}catch(e){alert(e.message)}}
+function tick(){if(!timer){$('clock').textContent='00:00:00';$('timerTask').textContent='Choose Track on a task.';return}const s=Math.floor((Date.now()-timer.start)/1000);$('clock').textContent=new Date(s*1000).toISOString().slice(11,19);$('timerTask').textContent='Tracking: '+(tasks.find(t=>t.id===timer.taskId)?.title||'Task');setTimeout(tick,1000)}
+(async()=>{if(token&&user){try{await showApp()}catch(e){localStorage.clear();location.reload()}}else $('auth').classList.remove('hidden')})();
+})();
+</script>
+</body></html>
