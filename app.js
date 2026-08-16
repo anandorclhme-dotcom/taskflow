@@ -1,1 +1,67 @@
-const URL='https://aerytmekaqqheyjjnwwd.supabase.co',KEY='sb_publishable_JL1U2PYC7uftN_hbMHYsDw_tiMxHz3M',db=supabase.createClient(URL,KEY);let user,projects=[],tasks=[],active=null,timer=null;const $=id=>document.getElementById(id),esc=s=>String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),today=()=>new Date().toISOString().slice(0,10),mins=n=>{n=Math.floor(n||0);return n<60?n+'m':Math.floor(n/60)+'h '+n%60+'m'};async function load(){let p=await db.from('projects').select('*').order('created_at'),t=await db.from('tasks').select('*').order('due_at',{ascending:true,nullsFirst:false});if(p.error||t.error)return alert((p.error||t.error).message);projects=p.data||[];tasks=t.data||[];render()}async function start(){let s=await db.auth.getSession();if(s.data.session){user=s.data.session.user;show()}else $('auth').classList.remove('hidden')}function show(){$('auth').classList.add('hidden');$('app').classList.remove('hidden');$('who').textContent=user.email;load()}$('login').onclick=async()=>{let r=await db.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(r.error)$('msg').textContent=r.error.message};$('signup').onclick=async()=>{let r=await db.auth.signUp({email:$('email').value,password:$('password').value,options:{data:{full_name:$('name').value}}});$('msg').textContent=r.error?r.error.message:'Account created. Check email if confirmation is enabled.'};$('logout').onclick=async()=>{await db.auth.signOut();location.reload()};db.auth.onAuthStateChange((e,s)=>{if(s&&!user){user=s.user;show()}});function render(){let d=today(),now=new Date(),f=$('filter').value,a=tasks.filter(t=>!active||t.project_id===active);if(f==='open')a=a.filter(t=>t.status!=='done');if(f==='done')a=a.filter(t=>t.status==='done');if(f==='today')a=a.filter(t=>t.due_at?.slice(0,10)===d);$('today').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at?.slice(0,10)===d).length;$('overdue').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at&&new Date(t.due_at)<now).length;$('completed').textContent=tasks.filter(t=>t.status==='done').length;$('tracked').textContent=mins(tasks.reduce((x,t)=>x+(t.actual_minutes||0),0));$('projects').innerHTML=projects.map(p=>`<div class="project ${active===p.id?'active':''}" data-p="${p.id}"><b>${esc(p.name)}</b><div class="meta">${tasks.filter(t=>t.project_id===p.id&&t.status==='done').length}/${tasks.filter(t=>t.project_id===p.id).length} completed</div></div>`).join('')||'<p>No projects</p>';$('tasks').innerHTML=a.map(t=>`<div class="task ${t.status==='done'?'done':''}"><input type="checkbox" ${t.status==='done'?'checked':''} data-c="${t.id}"><div><div class="name">${esc(t.title)}</div><div class="meta">${esc(projects.find(p=>p.id===t.project_id)?.name||'No project')} · ${t.due_at?new Date(t.due_at).toLocaleString():'No due date'} · ${mins(t.actual_minutes)}</div></div><button class="secondary" data-t="${t.id}">${timer?.taskId===t.id?'Stop':'Track'}</button></div>`).join('')||'<p>No tasks</p>';document.querySelectorAll('[data-p]').forEach(x=>x.onclick=()=>{active=active===x.dataset.p?null:x.dataset.p;render()});document.querySelectorAll('[data-c]').forEach(x=>x.onchange=async()=>{await db.from('tasks').update({status:x.checked?'done':'todo',updated_at:new Date().toISOString()}).eq('id',x.dataset.c).eq('user_id',user.id);load()});document.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>timer?.taskId===x.dataset.t?stopTimer():startTimer(x.dataset.t))}$('filter').onchange=render;$('newProject').onclick=()=>$('projectDlg').showModal();$('saveProject').onclick=async e=>{e.preventDefault();let n=$('projectName').value.trim();if(n){await db.from('projects').insert({user_id:user.id,name:n});$('projectDlg').close();$('projectName').value='';load()}};$('newTask').onclick=()=>openTask();function openTask(){let s=$('taskProject');s.innerHTML=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(active)s.value=active;$('taskDlg').showModal()}$('saveTask').onclick=async e=>{e.preventDefault();let r=await db.from('tasks').insert({user_id:user.id,title:$('taskName').value,project_id:$('taskProject').value||null,due_at:$('taskDue').value?new Date($('taskDue').value).toISOString():null,priority:$('taskPriority').value,estimated_minutes:+$('taskEstimate').value});if(r.error)alert(r.error.message);else{$('taskDlg').close();$('taskName').value='';load()}};async function startTimer(id){let r=await db.from('time_entries').insert({user_id:user.id,task_id:id,started_at:new Date().toISOString()}).select().single();if(r.error)return alert(r.error.message);timer={taskId:id,entry:r.data,start:Date.now()};tick();render()}async function stopTimer(){let sec=Math.floor((Date.now()-timer.start)/1000),id=timer.taskId;await db.from('time_entries').update({ended_at:new Date().toISOString(),duration_seconds:sec}).eq('id',timer.entry.id).eq('user_id',user.id);let t=tasks.find(x=>x.id===id);await db.from('tasks').update({actual_minutes:Math.round((t.actual_minutes||0)+sec/60)}).eq('id',id).eq('user_id',user.id);timer=null;load()}function tick(){if(!timer){$('clock').textContent='00:00:00';$('timerTask').textContent='Choose Track on a task.';return}let s=Math.floor((Date.now()-timer.start)/1000);$('clock').textContent=new Date(s*1000).toISOString().slice(11,19);$('timerTask').textContent='Tracking: '+(tasks.find(t=>t.id===timer.taskId)?.title||'Task');setTimeout(tick,1000)}start();
+(() => {
+'use strict';
+const SUPABASE_URL='https://aerytmekaqqheyjjnwwd.supabase.co';
+const SUPABASE_KEY='sb_publishable_JL1U2PYC7uftN_hbMHYsDw_tiMxHz3M';
+let client=null,user=null,projects=[],tasks=[],activeProject=null,timer=null;
+const $=id=>document.getElementById(id);
+const msg=(s,ok=false)=>{$('msg').textContent=s;$('msg').style.color=ok?'#166534':'#b91c1c'};
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const today=()=>new Date().toISOString().slice(0,10);
+const mins=n=>{n=Math.floor(n||0);return n<60?n+'m':Math.floor(n/60)+'h '+n%60+'m'};
+
+async function boot(){
+ try{
+  if(!window.supabase?.createClient) throw Error('Supabase library did not load. Please refresh the page.');
+  client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  const {data,error}=await client.auth.getSession(); if(error) throw error;
+  if(data.session){user=data.session.user;await showApp()} else $('auth').classList.remove('hidden');
+  client.auth.onAuthStateChange((_e,s)=>{if(s&&!user){user=s.user;showApp().catch(e=>msg(e.message))}});
+ }catch(e){console.error(e);msg('Startup error: '+e.message)}
+}
+$('login').onclick=async()=>{
+ const email=$('email').value.trim(),password=$('password').value;
+ if(!email||!password)return msg('Enter email and password.');
+ $('login').disabled=true;msg('Signing in...',true);
+ try{const {data,error}=await client.auth.signInWithPassword({email,password});if(error)throw error;user=data.user;await showApp()}
+ catch(e){console.error(e);msg(e.message||'Login failed.')}
+ finally{$('login').disabled=false}
+};
+$('signup').onclick=async()=>{
+ const email=$('email').value.trim(),password=$('password').value,name=$('name').value.trim();
+ if(!email||!password)return msg('Enter email and password.');
+ if(password.length<6)return msg('Password must be at least 6 characters.');
+ $('signup').disabled=true;msg('Creating account...',true);
+ try{const {data,error}=await client.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin}});if(error)throw error;
+  if(data.session){user=data.user;await showApp()}else msg('Account created. Check your email, confirm it, then tap Login.',true);
+ }catch(e){console.error(e);msg(e.message||'Signup failed.')}finally{$('signup').disabled=false}
+};
+$('logout').onclick=async()=>{await client.auth.signOut();location.reload()};
+async function showApp(){$('auth').classList.add('hidden');$('app').classList.remove('hidden');$('who').textContent=user.email||'';await load()}
+async function load(){
+ const p=await client.from('projects').select('*').order('created_at',{ascending:true});if(p.error)throw p.error;
+ const t=await client.from('tasks').select('*').order('due_at',{ascending:true,nullsFirst:false});if(t.error)throw t.error;
+ projects=p.data||[];tasks=t.data||[];render()
+}
+function render(){
+ const d=today(),now=new Date(),f=$('filter').value;
+ $('today').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at?.slice(0,10)===d).length;
+ $('overdue').textContent=tasks.filter(t=>t.status!=='done'&&t.due_at&&new Date(t.due_at)<now).length;
+ $('completed').textContent=tasks.filter(t=>t.status==='done').length;
+ $('tracked').textContent=mins(tasks.reduce((x,t)=>x+(t.actual_minutes||0),0));
+ $('projects').innerHTML=projects.map(p=>`<div class="project ${activeProject===p.id?'active':''}" data-p="${p.id}"><b>${esc(p.name)}</b><div class="meta">${tasks.filter(t=>t.project_id===p.id&&t.status==='done').length}/${tasks.filter(t=>t.project_id===p.id).length} completed</div></div>`).join('')||'<p>No projects</p>';
+ document.querySelectorAll('[data-p]').forEach(x=>x.onclick=()=>{activeProject=activeProject===x.dataset.p?null:x.dataset.p;render()});
+ let a=tasks.filter(t=>!activeProject||t.project_id===activeProject);if(f==='open')a=a.filter(t=>t.status!=='done');if(f==='done')a=a.filter(t=>t.status==='done');if(f==='today')a=a.filter(t=>t.due_at?.slice(0,10)===d);
+ $('tasks').innerHTML=a.map(t=>`<div class="task ${t.status==='done'?'done':''}"><input type="checkbox" ${t.status==='done'?'checked':''} data-c="${t.id}"><div><div class="name">${esc(t.title)}</div><div class="meta">${esc(projects.find(p=>p.id===t.project_id)?.name||'No project')} · ${t.due_at?new Date(t.due_at).toLocaleString():'No due date'} · ${mins(t.actual_minutes)}</div></div><button type="button" class="secondary" data-t="${t.id}">${timer?.taskId===t.id?'Stop':'Track'}</button></div>`).join('')||'<p>No tasks</p>';
+ document.querySelectorAll('[data-c]').forEach(x=>x.onchange=async()=>{const r=await client.from('tasks').update({status:x.checked?'done':'todo',updated_at:new Date().toISOString()}).eq('id',x.dataset.c).eq('user_id',user.id);if(r.error)alert(r.error.message);else load()});
+ document.querySelectorAll('[data-t]').forEach(x=>x.onclick=()=>timer?.taskId===x.dataset.t?stopTimer():startTimer(x.dataset.t))
+}
+$('filter').onchange=render;
+$('newProject').onclick=()=>$('projectDlg').showModal();
+$('saveProject').onclick=async e=>{e.preventDefault();const n=$('projectName').value.trim();if(!n)return;const r=await client.from('projects').insert({user_id:user.id,name:n});if(r.error)alert(r.error.message);else{$('projectDlg').close();$('projectName').value='';load()}};
+$('newTask').onclick=()=>{$('taskProject').innerHTML=projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');if(activeProject)$('taskProject').value=activeProject;$('taskDlg').showModal()};
+$('saveTask').onclick=async e=>{e.preventDefault();const r=await client.from('tasks').insert({user_id:user.id,title:$('taskName').value.trim(),project_id:$('taskProject').value||null,due_at:$('taskDue').value?new Date($('taskDue').value).toISOString():null,priority:$('taskPriority').value,estimated_minutes:+$('taskEstimate').value});if(r.error)alert(r.error.message);else{$('taskDlg').close();$('taskName').value='';load()}};
+async function startTimer(id){const r=await client.from('time_entries').insert({user_id:user.id,task_id:id,started_at:new Date().toISOString()}).select().single();if(r.error)return alert(r.error.message);timer={taskId:id,entry:r.data,start:Date.now()};render();tick()}
+async function stopTimer(){if(!timer)return;const sec=Math.floor((Date.now()-timer.start)/1000),id=timer.taskId;await client.from('time_entries').update({ended_at:new Date().toISOString(),duration_seconds:sec}).eq('id',timer.entry.id).eq('user_id',user.id);const t=tasks.find(x=>x.id===id);await client.from('tasks').update({actual_minutes:Math.round((t?.actual_minutes||0)+sec/60),updated_at:new Date().toISOString()}).eq('id',id).eq('user_id',user.id);timer=null;await load()}
+function tick(){if(!timer){$('clock').textContent='00:00:00';$('timerTask').textContent='Choose Track on a task.';return}const s=Math.floor((Date.now()-timer.start)/1000);$('clock').textContent=new Date(s*1000).toISOString().slice(11,19);$('timerTask').textContent='Tracking: '+(tasks.find(t=>t.id===timer.taskId)?.title||'Task');setTimeout(tick,1000)}
+boot();
+})();
