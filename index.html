@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+  <title>TaskFlow</title>
+</head>
+<body>
+  <header class="topbar">
+    <div><strong>TaskFlow</strong><span class="muted">Tasks • Projects • Time</span></div>
+    <button id="installBtn" class="secondary hidden">Install App</button>
+  </header>
+
+  <main class="container">
+    <section class="stats">
+      <div class="card"><span>Today</span><b id="todayCount">0</b><small>tasks due</small></div>
+      <div class="card"><span>Overdue</span><b id="overdueCount">0</b><small>need attention</small></div>
+      <div class="card"><span>Completed</span><b id="completedCount">0</b><small>all time</small></div>
+      <div class="card"><span>Tracked</span><b id="trackedTime">0m</b><small>all time</small></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Projects</h2><button id="addProject">+ Project</button>
+        </div>
+        <div id="projectList"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Tasks</h2>
+          <div class="actions"><select id="filter"><option value="all">All</option><option value="today">Today</option><option value="open">Open</option><option value="done">Completed</option></select><button id="addTask">+ Task</button></div>
+        </div>
+        <div id="taskList"></div>
+      </div>
+    </section>
+
+    <section class="panel timer">
+      <div>
+        <h2>Time Tracker</h2>
+        <p id="timerTask" class="muted">Select a task to start tracking.</p>
+      </div>
+      <div class="timer-row"><strong id="timerDisplay">00:00:00</strong><button id="startStop">Start</button></div>
+    </section>
+  </main>
+
+  <dialog id="taskDialog">
+    <form method="dialog" id="taskForm">
+      <h2 id="taskTitle">New Task</h2>
+      <input type="hidden" id="taskId">
+      <label>Task name<input id="taskName" required></label>
+      <label>Project<select id="taskProject"></select></label>
+      <label>Due date/time<input id="taskDue" type="datetime-local"></label>
+      <label>Priority<select id="taskPriority"><option>Low</option><option selected>Medium</option><option>High</option><option>Urgent</option></select></label>
+      <label>Estimated minutes<input id="taskEstimate" type="number" min="0" value="30"></label>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button id="saveTask" value="default">Save</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="projectDialog">
+    <form method="dialog" id="projectForm">
+      <h2>New Project</h2>
+      <label>Project name<input id="projectName" required></label>
+      <div class="dialog-actions"><button value="cancel" class="secondary">Cancel</button><button value="default">Create</button></div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
