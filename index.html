@@ -49,4 +49,5 @@ async function startTimer(id){try{const d=await request('/rest/v1/time_entries',
 (async()=>{if(token&&user){try{await showApp()}catch(e){localStorage.clear();location.reload()}}else $('auth').classList.remove('hidden')})();
 })();
 </script><script src="/v4-overrides.js"></script>
+<script src="/v5-overrides.js"></script>
 </body></html>
