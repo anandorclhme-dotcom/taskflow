@@ -1,0 +1,31 @@
+name: TaskFlow UI v4 guard
+on:
+  push:
+    paths:
+      - 'index.html'
+      - '.github/workflows/taskflow_ui_v4_guard.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Harden edit handlers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          p='index.html'
+          s=open(p,encoding='utf-8').read()
+          s2=s.replace("$('saveGoalBtn')?.addEventListener('click',saveGoal,true);", "$('saveGoalBtn')?.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();saveGoal(e)},true);")
+          s2=s2.replace("$('saveProjectBtn')?.addEventListener('click',saveProject,true);", "$('saveProjectBtn')?.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();saveProject(e)},true);")
+          s2=s2.replace("$('saveTaskBtn')?.addEventListener('click',saveTask,true);", "$('saveTaskBtn')?.addEventListener('click',function(e){e.preventDefault();e.stopImmediatePropagation();saveTask(e)},true);")
+          if s2 != s:
+              open(p,'w',encoding='utf-8').write(s2)
+          PY
+          git config user.name 'TaskFlow Bot'
+          git config user.email 'taskflow-bot@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet || git commit -m 'Prevent duplicate edit form submissions'
+          git push || true
