@@ -1,0 +1,61 @@
+name: Apply Goal UI Fix
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch goal UI and delete button size
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace('.mini{padding:5px 8px;font-size:11px;background:#fee2e2;color:#b91c1c;float:right}', '.mini{padding:2px 3px;font-size:9px;background:#fee2e2;color:#b91c1c;float:right;line-height:1;border-radius:5px}')
+          a=s.find('<dialog id="goalDlg">')
+          b=s.find('</dialog>',a)
+          if a>=0 and b>=0:
+            b+=len('</dialog>')
+            dlg='''<dialog id="goalDlg"><form method="dialog"><h2>🎯 Create Goal</h2><select id="goalPeriod"><option value="weekly">Weekly</option><option value="monthly">Monthly</option><option value="yearly">Yearly</option></select><input id="goalTitle" required placeholder="Goal Title"><input id="goalDescription" placeholder="Description"><input id="goalDueDate" required type="date"><select id="goalStatus" required><option value="pending">Pending</option><option value="inprogress">In Progress</option><option value="completed">Completed</option></select><div class="row"><button value="cancel" class="secondary">Cancel</button><button id="saveGoalBtn">Create Goal</button></div></form></dialog>'''
+            s=s[:a]+dlg+s[b:]
+          marker='</script>'
+          inject=r'''<script>
+(function(){
+  function setupGoalForm(){
+    const metric=document.getElementById('goalMetric'),target=document.getElementById('goalTarget');
+    if(metric) metric.closest('select')?.remove();
+    if(target) target.remove();
+    if(!document.getElementById('goalDueDate')){const el=document.createElement('input');el.id='goalDueDate';el.required=true;el.type='date';el.placeholder='Due Date';document.getElementById('goalDescription')?.after(el)}
+    if(!document.getElementById('goalStatus')){const el=document.createElement('select');el.id='goalStatus';el.required=true;el.innerHTML='<option value="pending">Pending</option><option value="inprogress">In Progress</option><option value="completed">Completed</option>';document.getElementById('goalDueDate')?.after(el)}
+  }
+  document.getElementById('newGoalBtn')?.addEventListener('click',()=>setTimeout(setupGoalForm,0));
+  setupGoalForm();
+  document.addEventListener('click',async function(ev){
+    if(ev.target?.id!=='saveGoalBtn') return;
+    ev.preventDefault();ev.stopImmediatePropagation();
+    setupGoalForm();
+    const period=document.getElementById('goalPeriod').value,title=document.getElementById('goalTitle').value.trim(),description=document.getElementById('goalDescription').value.trim(),due=document.getElementById('goalDueDate').value,status=document.getElementById('goalStatus').value;
+    if(!title||!due||!status){alert('Please enter Goal Title, Due Date and Status.');return}
+    try{
+      const payload={user_id:user.id,title,description,period,start_date:new Date().toISOString().slice(0,10),end_date:due,status};
+      await request('/rest/v1/goals',{method:'POST',headers:{Prefer:'return=minimal'},body:JSON.stringify(payload)});
+      document.getElementById('goalDlg').close();
+      await load();
+    }catch(e){alert(e.message)}
+  },true);
+})();
+</script>'''
+          s=s.replace(marker,inject+'\n'+marker)
+          p.write_text(s)
+          PY
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet || git commit -m "Fix goals form and shrink delete buttons"
+          git push
