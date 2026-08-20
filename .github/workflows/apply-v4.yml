@@ -1,9 +1,10 @@
-name: Apply TaskFlow V4/V5 overrides
+name: Apply TaskFlow V4/V5/V6 overrides
 on:
   push:
     paths:
       - 'v4-overrides.js'
       - 'v5-overrides.js'
+      - 'v6-task-filters.js'
       - '.github/workflows/apply-v4.yml'
 permissions:
   contents: write
@@ -18,7 +19,7 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          for tag in ['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>']:
+          for tag in ['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>','<script src="/v6-task-filters.js"></script>']:
               if tag not in s:
                   s=s.replace('</body>', tag+'\n</body>')
           p.write_text(s,encoding='utf-8')
@@ -28,5 +29,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet || git commit -m 'Apply TaskFlow V5 report and dashboard'
+          git diff --cached --quiet || git commit -m 'Apply TaskFlow V6 task filters'
           git push
