@@ -1,4 +1,4 @@
-name: Apply TaskFlow V4/V5/V6 overrides
+name: Apply TaskFlow V4/V5/V6/V7 overrides
 on:
   push:
     paths:
@@ -6,6 +6,8 @@ on:
       - 'v5-overrides.js'
       - 'v6-task-filters.js'
       - 'v6-task-table.js'
+      - 'v7-project-task-layout.js'
+      - 'app.js'
       - '.github/workflows/apply-v4.yml'
 permissions:
   contents: write
@@ -20,7 +22,7 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          for tag in ['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>','<script src="/v6-task-filters.js"></script>','<script src="/v6-task-table.js"></script>']:
+          for tag in ['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>','<script src="/v6-task-filters.js"></script>','<script src="/v6-task-table.js"></script>','<script src="/v7-project-task-layout.js"></script>']:
               if tag not in s:
                   s=s.replace('</body>', tag+'\n</body>')
           p.write_text(s,encoding='utf-8')
@@ -30,5 +32,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet || git commit -m 'Apply TaskFlow V6 grouped task table'
+          git diff --cached --quiet || git commit -m 'Apply TaskFlow V7 project and task layout'
           git push
