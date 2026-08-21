@@ -9,6 +9,7 @@ on:
       - 'v7-project-task-layout.js'
       - 'v8-production-layout.js'
       - 'v9-production.js'
+      - 'v10-task-project-edit.js'
       - '.github/workflows/apply-v4.yml'
 permissions:
   contents: write
@@ -23,7 +24,7 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          tags=['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>','<script src="/v6-task-filters.js"></script>','<script src="/v6-task-table.js"></script>','<script src="/v7-project-task-layout.js"></script>','<script src="/v8-production-layout.js"></script>','<script src="/v9-production.js"></script>']
+          tags=['<script src="/v4-overrides.js"></script>','<script src="/v5-overrides.js"></script>','<script src="/v6-task-filters.js"></script>','<script src="/v6-task-table.js"></script>','<script src="/v7-project-task-layout.js"></script>','<script src="/v8-production-layout.js"></script>','<script src="/v9-production.js"></script>','<script src="/v10-task-project-edit.js"></script>']
           for tag in tags:
               if tag not in s:
                   s=s.replace('</body>', tag+'\n</body>')
@@ -34,5 +35,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
-          git diff --cached --quiet || git commit -m 'Apply TaskFlow V9 production renderer'
+          git diff --cached --quiet || git commit -m 'Apply TaskFlow V10 production enhancements'
           git push
